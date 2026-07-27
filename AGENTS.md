@@ -81,3 +81,6 @@ Adding a task or family means a Trainer/Validator/Predictor triplet wired into `
 - Tests hit the live network: weights (e.g. `yolo26n.pt`) and assets auto-download from GitHub releases; shared constants (`MODEL`, `CFG`, `SOURCE`) live in `tests/__init__.py`, with `MODEL` deliberately under a "path with spaces" directory.
 - Releases: bump `__version__` in `ultralytics/__init__.py`; on push to main, `publish.yml` detects the increment, then tags, creates the GitHub release, and publishes to PyPI (gated to the ultralytics repo and glenn-jocher).
 - Docs: docs.ultralytics.com is published from a separate portal repo, so relative `.md` cross-file links are the correct convention in `docs/en/`.
+
+## Hardware Acceleration
+**Always use the GPU for heavy tasks.** When writing, modifying, or running scripts that involve heavy computation—such as deep learning model inference (e.g., PyTorch, Ultralytics YOLO/SAM, Hugging Face models)—ensure that the code is explicitly configured to use the GPU (e.g., `device=0`, `device="cuda"`) rather than defaulting to CPU, unless specifically instructed otherwise.

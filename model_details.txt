@@ -1,0 +1,210 @@
+======================================================================
+  SAM3 vs EfficientLoFTR — Model Details & Color Coding Guide
+  Images: reference_map.png vs test_frame.png
+  Date: 2026-07-19
+======================================================================
+
+
+======================================================================
+  MODEL 1: SAM3 (Segment Anything Model 3)
+======================================================================
+
+  Type:        Semantic Segmentation (open-vocabulary)
+  Weights:     sam3.pt (3.4 GB)
+  Inference:   CUDA (NVIDIA RTX 4050, imgsz=322)
+  Approach:    Text-prompted segmentation — each terrain class is
+               queried as a text prompt and SAM3 produces instance
+               masks with per-instance confidence scores.
+
+  ── SAM3 Segmentation Color Coding ──────────────────────────────────
+
+  Each detected class is overlaid on the original image with a
+  semi-transparent color (45% alpha) and outlined with contours.
+
+  Class                Color (BGR)         Visual Color       Conf Threshold
+  -------------------- ------------------- ------------------ --------------
+  building             (0, 0, 255)         RED                0.15
+  paved_road           (0, 255, 255)       YELLOW             0.25
+  unpaved_road         (42, 107, 168)      BROWN              0.20
+  tree                 (0, 200, 0)         GREEN              0.25
+  water                (255, 100, 0)       BLUE               0.20
+  agricultural_field   (50, 220, 50)       LIME GREEN         0.20
+
+  Legend on image:  Top-left corner of each panel shows colored
+                    squares with "class_name: count (mean_conf)"
+
+  Bottom text:      "SAM3 Overall Conf: X.XXXX" in cyan
+
+  How to read the SAM3 image (comparison_sam3.jpg):
+    - LEFT panel  = Reference Map (satellite view) with overlays
+    - RIGHT panel = Test Frame (drone view) with overlays
+    - Brighter/more saturated overlay = more instances detected
+    - The legend shows how many instances of each class were found
+      and their average confidence score
+
+
+======================================================================
+  MODEL 2: EfficientLoFTR (Efficient Local Feature TRansformer)
+======================================================================
+
+  Type:        Keypoint Feature Matching
+  Weights:     zju-community/efficientloftr (HuggingFace)
+  Inference:   CPU (Transformers library)
+  Approach:    Detects and matches local features (keypoints) between
+               the two images. Each match has a confidence score
+               from 0.0 to 1.0 indicating how reliable the match is.
+
+  ── LoFTR Match Line Color Coding (Jet Colormap) ───────────────────
+
+  Match lines are colored using matplotlib's "jet" colormap, which
+  maps confidence scores to colors on a spectrum:
+
+  Confidence Range     Color              Meaning
+  -------------------- ------------------ ---------------------------
+  0.00 – 0.15          DARK BLUE          Very low confidence
+  0.15 – 0.30          BLUE               Low confidence
+  0.30 – 0.45          CYAN / LIGHT BLUE  Below average confidence
+  0.45 – 0.55          GREEN              Medium confidence
+  0.55 – 0.70          YELLOW             Above average confidence
+  0.70 – 0.85          ORANGE             High confidence
+  0.85 – 1.00          RED / DARK RED     Very high confidence
+
+  ★ RED lines   = HIGHEST confidence matches (most reliable)
+  ★ BLUE lines  = LOWEST  confidence matches (least reliable)
+
+  How to read the LoFTR image (comparison_loftr.jpg):
+    - LEFT side  = Reference Map with matched keypoints (dots)
+    - RIGHT side = Test Frame with matched keypoints (dots)
+    - Lines connect corresponding keypoints between the two images
+    - Line color indicates match confidence (see table above)
+    - Only the top 150 highest-confidence matches are shown for
+      clarity (out of 929 total matches found)
+    - Parallel, horizontal lines suggest good geometric alignment
+    - Crossing/chaotic lines suggest mismatches
+
+  Match threshold:  0.10 (matches below this are discarded)
+  Visualization:    Top 150 matches by confidence shown
+
+
+======================================================================
+  MODEL 3: LightGlue (SuperPoint + LightGlue)
+======================================================================
+
+  Type:        Keypoint Feature Matching (Sparse)
+  Weights:     superpoint.pt, lightglue.pt (TorchScript)
+  Inference:   C++ LibTorch (GPU/CPU) within SP_SLAM3
+  Approach:    SuperPoint detects robust corners and extracts descriptors.
+               LightGlue matches them using graph neural networks with 
+               adaptive stopping.
+
+  ── LightGlue Match Line Color Coding (Jet Colormap) ───────────────
+
+  LightGlue in SP_SLAM3 uses the exact same "Jet" colormap as LoFTR 
+  to visualize match confidence:
+
+  Confidence Range     Color              Meaning
+  -------------------- ------------------ ---------------------------
+  0.00 – 0.25          DARK BLUE          Low confidence
+  0.25 – 0.50          LIGHT BLUE/CYAN    Below average confidence
+  0.50 – 0.75          YELLOW/GREEN       Above average confidence
+  0.75 – 1.00          RED/ORANGE         Very high confidence
+
+  ★ RED lines   = HIGHEST confidence matches (most reliable)
+  ★ BLUE lines  = LOWEST  confidence matches (least reliable)
+
+  How to read the LightGlue image (comparison_cpp_slam3_*.jpg):
+    - LEFT side  = Reference Map
+    - RIGHT side = Test Frame
+    - Red lines are drawn last (on top) to highlight the best matches.
+    - Matches are filtered internally by a threshold of 0.10.
+
+
+======================================================================
+  QUICK REFERENCE
+======================================================================
+
+  comparison_sam3.jpg:
+    → Green/lime overlays  = agricultural fields (dominant feature)
+    → Yellow overlays      = paved roads
+    → Blue overlays        = water bodies
+    → Dark green overlays  = trees
+
+  comparison_loftr.jpg:
+    → Red/orange lines     = high-confidence matches (trust these)
+    → Blue/cyan lines      = low-confidence matches (less reliable)
+    → More red lines       = better overall matching quality
+
+======================================================================
+
+
+======================================================================
+  MODEL 3: SuperPoint + LightGlue
+======================================================================
+
+  Type:        Keypoint Feature Extraction and Matching
+  Weights:     cvg/LightGlue (SuperPoint extractor)
+  Inference:   CUDA (NVIDIA RTX 4050)
+  Approach:    SuperPoint extracts keypoints and descriptors, then
+               LightGlue acts as the matcher. Super fast and highly 
+               accurate.
+
+  ── LightGlue Match Line Color Coding (Jet Colormap) ───────────────
+
+  Match lines are colored using matplotlib's "jet" colormap, mapping 
+  confidence scores (0.0 to 1.0) to colors, exactly like LoFTR:
+
+  Confidence Range     Color              Meaning
+  -------------------- ------------------ ---------------------------
+  0.00 – 0.15          DARK BLUE          Very low confidence
+  0.15 – 0.30          BLUE               Low confidence
+  0.30 – 0.45          CYAN / LIGHT BLUE  Below average confidence
+  0.45 – 0.55          GREEN              Medium confidence
+  0.55 – 0.70          YELLOW             Above average confidence
+  0.70 – 0.85          ORANGE             High confidence
+  0.85 – 1.00          RED / DARK RED     Very high confidence
+
+  ★ RED lines   = HIGHEST confidence matches (most reliable)
+  ★ BLUE lines  = LOWEST  confidence matches (least reliable)
+
+  How to read the LightGlue images:
+    - LEFT side  = Reference Map with matched keypoints (dots)
+    - RIGHT side = Test Frame with matched keypoints (dots)
+    - Lines connect corresponding keypoints between the two images
+    - Line color indicates match confidence (see table above)
+    - Suffix _30m  = Top 30 highest confidence matches shown.
+    - Suffix _150m = Top 150 highest confidence matches shown.
+    - Suffix _all  = ALL matches shown (e.g. 400+ lines).
+
+
+======================================================================
+  MODEL 4: SuperPoint + SuperGlue
+======================================================================
+
+  Type:        Keypoint Feature Extraction and Matching
+  Weights:     magicleap/SuperGlue (outdoor weights)
+  Inference:   CUDA (NVIDIA RTX 4050)
+  Approach:    The highly successful predecessor to LightGlue. Uses 
+               Graph Neural Networks and Optimal Transport to match 
+               SuperPoint keypoints.
+
+  ── SuperGlue Results (Tested with 30, 150, and ALL Matches) ───────
+
+  Configuration 1: RAW RGB Map vs RAW Event Frame
+    -> Confidence: 0.2684
+    -> Matches: 6 (Total Failure - SuperPoint cannot extract corners from RAW event data)
+
+  Configuration 2: Spatial Gradient Map vs Grayscale Event Frame
+    -> Confidence: 0.4474
+    -> Matches: 337
+
+  Configuration 3: Spatial Gradient Map vs RAW Event Frame
+    -> Confidence: 0.5019
+    -> Matches: 314 (Extremely high confidence, though fewer matches than LightGlue)
+
+  Configuration 4: Grayscale RGB Map vs Grayscale Drone Footage
+    -> Confidence: 0.6003
+    -> Matches: 301
+
+  ── SuperGlue Match Line Color Coding (Jet Colormap) ───────────────
+  (Shares the exact same Jet Colormap scheme as LoFTR and LightGlue. 
+  See the tables above for reference).

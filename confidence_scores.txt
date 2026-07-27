@@ -1,0 +1,50 @@
+======================================================================
+  SAM3 vs EfficientLoFTR — Confidence Score Report
+  Images: reference_map.png vs test_frame.png
+  Date: 2026-07-19
+======================================================================
+
+
+----------------------------------------------------------------------
+  MODEL 1: SAM3 (Semantic Segmentation)
+----------------------------------------------------------------------
+
+  Per-Class Confidence Scores:
+
+  Class                     Ref Count   Ref Conf   Test Count  Test Conf
+  ------------------------- ---------  ---------   ----------  ---------
+  building                          0     0.0000            0     0.0000
+  paved_road                        4     0.4580           10     0.3887
+  unpaved_road                      1     0.3127            0     0.0000
+  tree                              8     0.3762           10     0.4077
+  water                             6     0.3464            0     0.0000
+  agricultural_field               47     0.3450           55     0.3318
+
+  Overall:
+    Reference Map Mean Confidence:   0.3553
+    Test Frame Mean Confidence:      0.3495
+    ★ SAM3 Combined Mean Confidence: 0.3524
+
+
+----------------------------------------------------------------------
+  MODEL 2: EfficientLoFTR (Feature Matching)
+----------------------------------------------------------------------
+
+  Match Statistics:
+    Total Keypoint Matches:    929
+    Min Confidence:            0.2000
+    Median Confidence:         0.4091
+    Max Confidence:            0.9940
+    ★ Mean Confidence:         0.4660
+
+
+======================================================================
+  FINAL COMPARISON
+======================================================================
+
+  Model                            Confidence
+  ------------------------------ ------------
+  SAM3 (segmentation)                  0.3524
+  EfficientLoFTR (matching)            0.4660
+
+======================================================================

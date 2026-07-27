@@ -1,0 +1,116 @@
+================================================================================
+  LOFTR vs LIGHTGLUE vs SUPERGLUE: COMPREHENSIVE COMPARISON FOR GPS-DENIED NAV
+================================================================================
+
+This document provides a detailed breakdown of the three feature matching 
+architectures tested for matching drone payload cameras (simulated DVS Event 
+Cameras) against satellite Reference Maps.
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL DIFFERENCES
+--------------------------------------------------------------------------------
+
+  MODEL A: EfficientLoFTR (Dense Matcher)
+  - How it works: Compares broad image patches across coarse-to-fine levels 
+    using a Transformer architecture. It does NOT extract keypoints first.
+  - Strengths: Highly robust to noise, textureless regions, and severe 
+    modality gaps (like color vs. event data). It can "see through" messy data.
+  - Weaknesses: Computationally heavy. Runs slower, especially on constrained 
+    edge hardware (drone payloads).
+
+  MODEL B: SuperPoint + SuperGlue (Sparse Matcher - Original)
+  - How it works: A two-step process. First, SuperPoint extracts specific 
+    geometric "keypoints" (like sharp corners). Then, SuperGlue uses Graph 
+    Neural Networks and Optimal Transport to match these points.
+  - Strengths: Can achieve extremely high confidence on structural matches.
+  - Weaknesses: "Brittle" to modality gaps. If SuperPoint cannot find corners 
+    due to weird noise (like RAW event data), SuperGlue has nothing to match.
+
+  MODEL C: SuperPoint + LightGlue (Sparse Matcher - Next-Gen)
+  - How it works: The successor to SuperGlue. It drops unmatchable points early 
+    across transformer layers to save compute time.
+  - Strengths: Blazing fast and adaptive. Achieves similar or better matching 
+    rates than SuperGlue but at a fraction of the computational cost.
+  - Weaknesses: Shares the exact same brittleness to raw noise as SuperGlue 
+    because it relies on the same SuperPoint extractor.
+
+--------------------------------------------------------------------------------
+2. CONTROL TEST (SANITY CHECK)
+--------------------------------------------------------------------------------
+
+  To verify the structural integrity of the Sparse Matching pipelines 
+  (SuperGlue & LightGlue), we ran a self-matching test (Reference Map against 
+  an exact copy of itself).
+  - Matches: 720
+  - Mean Confidence: 0.9740 (Near Perfect)
+  - Conclusion: The pipelines are fundamentally sound. Any drop in confidence 
+    seen in the tests below is purely due to the extreme difficulty of 
+    cross-modality matching (Satellite vs Drone Event), not an error in code.
+
+--------------------------------------------------------------------------------
+3. EXPERIMENTAL RESULTS (MEAN CONFIDENCE SCORES)
+--------------------------------------------------------------------------------
+
+  TEST 1: RAW RGB Map vs RAW Event Frame (No Pre-Processing)
+    - LoFTR:      0.3281
+    - SuperGlue:  0.2684 (6 matches - Total Failure)
+    - LightGlue:  0.1704 (12 matches - Total Failure)
+    >> Verdict: LOFTR WINS. 
+       SuperPoint (used by SuperGlue and LightGlue) completely collapses when 
+       trying to read the red/blue pixel noise of a RAW event frame. LoFTR 
+       survives because it matches broad, dense patches instead of corners.
+
+  TEST 2: Spatial Gradient Map vs Grayscale Event Frame
+    - LoFTR:      0.4166
+    - SuperGlue:  0.4474 (337 matches found)
+    - LightGlue:  0.3844 (401 matches found)
+    >> Verdict: TIE. 
+       By extracting the geometric edges (gradients) from the RGB map and 
+       removing the red/blue polarity from the Event frame, we successfully 
+       "bridged" the modality gap. All three models perform excellently here.
+
+  TEST 3: Spatial Gradient Map vs RAW Event Frame
+    - LoFTR:      0.4109
+    - SuperGlue:  0.5019 (314 matches found)
+    - LightGlue:  0.4178 (499 matches found)
+    >> Verdict: SUPERGLUE / LIGHTGLUE WIN.
+       Leaving the event frame colored while matching against a spatial 
+       gradient map yields the highest confidence scores. SuperGlue hits the 
+       highest peak confidence (0.50), but LightGlue finds significantly more 
+       total matches (499 vs 314) while running faster.
+
+  TEST 4: Grayscale Map vs Grayscale Standard Drone Frame (Baseline Test)
+    - LoFTR:      0.4648 (908 matches found)
+    - SuperGlue:  0.6003 (301 matches found)
+    - LightGlue:  0.3661 (402 matches found)
+    >> Verdict: LOFTR / SUPERGLUE WIN.
+       When tested on a standard photograph (no event camera), LoFTR finds 
+       the highest quantity of matches (908), while SuperGlue achieves the 
+       highest confidence score on its matches (0.60).
+
+--------------------------------------------------------------------------------
+4. CONCLUSIONS & DEPLOYMENT RECOMMENDATIONS
+--------------------------------------------------------------------------------
+
+  A. When to use LOFTR:
+     Use LoFTR if the drone's compute payload can handle it AND you want maximum 
+     resilience. If your preprocessing pipeline breaks, or you encounter strange 
+     unprocessed textures (like RAW Event data), LoFTR is much less likely to 
+     fail. It provides the safest, most robust match.
+
+  B. When to use LIGHTGLUE:
+     Use LightGlue if you are strictly constrained by compute/battery on the 
+     drone AND you can guarantee a strong preprocessing pipeline. As long as 
+     you use Spatial Gradient Modality Bridging (Test 3), LightGlue provides 
+     excellent accuracy and high match counts at incredibly low latency.
+
+  C. When to use SUPERGLUE:
+     SuperGlue boasts slightly higher mean confidence scores than LightGlue on 
+     the points it does find, but it extracts fewer total matches and is slower 
+     than LightGlue. Generally, LightGlue has superseded it for edge deployment.
+
+  FINAL VERDICT FOR EVENT-DRIVEN GPS-DENIED NAVIGATION:
+  For a high-speed drone using an Event Camera, LightGlue paired with Spatial 
+  Gradient pre-processing (Test 3) is the optimal configuration for balancing 
+  high-accuracy navigation with edge-compute latency. However, if dealing with 
+  unprocessed RAW camera feeds, LoFTR is mandatory.
