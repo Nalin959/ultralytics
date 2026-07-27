@@ -26,7 +26,7 @@ fi
 # Clone ORB-SLAM3
 if [ ! -d "ORB_SLAM3" ]; then
     echo "=== Cloning ORB-SLAM3 ==="
-    git clone https://github.com/UZ-SLAMLab/ORB_SLAM3.git
+    git clone https://github.com/Nalin959/ORB_SLAM3.git
     cd ORB_SLAM3
     
     # Give execute permissions to build scripts
